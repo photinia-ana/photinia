@@ -307,9 +307,9 @@ CREATE TABLE video_resources (
 
 ## 📞 联系方式
 
-- 项目主页: [https://github.com/yourusername/photinia](https://github.com/yourusername/photinia)
-- 问题反馈: [Issues](https://github.com/yourusername/photinia/issues)
-- 邮箱: your.email@example.com
+- 项目主页: [https://github.com/photinia-ana/photinia](https://github.com/photinia-ana/photinia)
+- 问题反馈: [Issues](https://github.com/photinia-ana/photinia/issues)
+- 邮箱: roooyhe@163.com
 
 ---
 
@@ -317,7 +317,7 @@ CREATE TABLE video_resources (
 
 **⭐ 如果这个项目对你有帮助，请给一个 Star！**
 
-Made with ❤️ by [Your Name]
+Made with ❤️ by [RoyHe roooyhe@163.com]
 
 </div>
 
