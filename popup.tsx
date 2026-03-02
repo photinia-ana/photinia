@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react"
 import { Storage } from "@plasmohq/storage"
-import { uploadRatings, type RatingRecord as SupabaseRatingRecord, getCurrentUser, signOut } from "~lib/supabase"
+import { getCurrentUser, signOut } from "~lib/supabase"
+import { submitBatchRatings, submitBatchVideos, verifyToken, type RatingRecord as ApiRatingRecord } from "~lib/api"
 import { AuthForm } from "~components/AuthForm"
+import { BackendAuthForm } from "~components/BackendAuthForm"
 
 const storage = new Storage()
+
+// 认证模式：supabase 或 backend
+const AUTH_MODE = process.env.PLASMO_PUBLIC_AUTH_MODE || 'supabase'
 
 interface RatingRecord {
   score: number
@@ -53,8 +58,27 @@ function IndexPopup() {
 
   const checkUser = async () => {
     try {
-      const currentUser = await getCurrentUser()
-      setUser(currentUser)
+      // 检查认证模式
+      const authMode = await storage.get("auth_mode") || AUTH_MODE
+      
+      if (authMode === 'backend') {
+        // 后端认证模式
+        const token = await storage.get("auth_token")
+        if (token) {
+          const result = await verifyToken(token)
+          if (result.success && result.data) {
+            setUser(result.data)
+          } else {
+            // Token 无效，清除
+            await storage.remove("auth_token")
+            await storage.remove("auth_user")
+          }
+        }
+      } else {
+        // Supabase 认证模式
+        const currentUser = await getCurrentUser()
+        setUser(currentUser)
+      }
     } catch (error) {
       console.error("检查用户状态失败:", error)
     } finally {
@@ -64,7 +88,18 @@ function IndexPopup() {
 
   const handleSignOut = async () => {
     try {
-      await signOut()
+      const authMode = await storage.get("auth_mode") || AUTH_MODE
+      
+      if (authMode === 'backend') {
+        // 后端认证模式：清除本地存储
+        await storage.remove("auth_token")
+        await storage.remove("auth_user")
+        await storage.remove("auth_mode")
+      } else {
+        // Supabase 认证模式
+        await signOut()
+      }
+      
       setUser(null)
       setRatings([])
       setRecentTabs([])
@@ -118,14 +153,14 @@ function IndexPopup() {
 
   const autoUploadRatings = async (records: RatingRecord[]) => {
     try {
-      const supabaseRecords: SupabaseRatingRecord[] = records.map(r => ({
+      const apiRatings: ApiRatingRecord[] = records.map(r => ({
         url: r.url || "",
         title: r.title || "未知页面",
         score: r.score,
-        rated_at: r.timestamp
+        ratedAt: r.timestamp
       }))
 
-      await uploadRatings(supabaseRecords)
+      await submitBatchRatings(user.id, apiRatings)
       
       // 上传成功后清空本地记录
       await storage.set("ratings", [])
@@ -148,14 +183,14 @@ function IndexPopup() {
 
     setUploading(true)
     try {
-      const supabaseRecords: SupabaseRatingRecord[] = ratings.map(r => ({
+      const apiRatings: ApiRatingRecord[] = ratings.map(r => ({
         url: r.url || "",
         title: r.title || "未知页面",
         score: r.score,
-        rated_at: r.timestamp
+        ratedAt: r.timestamp
       }))
 
-      await uploadRatings(supabaseRecords)
+      await submitBatchRatings(user.id, apiRatings)
       
       // 上传成功后清空本地记录
       await storage.set("ratings", [])
@@ -195,25 +230,12 @@ function IndexPopup() {
           setUploadMessage(`正在上传 ${response.videos.length} 个视频...`)
           
           try {
-            const result = await fetch('http://localhost:8733/resources/batch', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                userId: user.id,
-                videos: response.videos,
-                sourceUrl: tab.url,
-                extractedAt: new Date().toISOString()
-              })
-            })
+            const result = await submitBatchVideos(user.id, response.videos, tab.url)
             
-            const data = await result.json()
-            
-            if (data.success) {
-              setUploadMessage(`✓ 成功采集 ${data.count} 个视频`)
+            if (result.success) {
+              setUploadMessage(`✓ 成功采集 ${result.count} 个视频`)
             } else {
-              setUploadMessage(`✗ 采集失败: ${data.error}`)
+              setUploadMessage(`✗ 采集失败: ${result.error}`)
             }
           } catch (error) {
             setUploadMessage(`✗ 上传失败: ${error.message}`)
@@ -249,7 +271,13 @@ function IndexPopup() {
 
   // 未登录状态
   if (!user) {
-    return <AuthForm onSuccess={checkUser} />
+    const authMode = AUTH_MODE
+    
+    if (authMode === 'backend') {
+      return <BackendAuthForm onSuccess={checkUser} />
+    } else {
+      return <AuthForm onSuccess={checkUser} />
+    }
   }
 
   // 已登录状态
