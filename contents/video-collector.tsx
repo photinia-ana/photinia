@@ -149,24 +149,34 @@ export default function VideoCollector() {
         return
       }
 
-      // 发送到后端
-      const response = await fetch('http://localhost:8733/resources/batch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          videos,
-          sourceUrl: window.location.href,
-          extractedAt: new Date().toISOString()
+      // 发送到后端（通过 Background Script 代理）
+      const result = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          type: 'API_REQUEST',
+          payload: {
+            url: 'http://localhost:8733/resources/batch',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: {
+              userId: user.id,
+              videos,
+              sourceUrl: window.location.href,
+              extractedAt: new Date().toISOString()
+            }
+          }
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message))
+          } else {
+            resolve(response)
+          }
         })
       })
-
-      const result = await response.json()
       
       if (result.success) {
-        alert(`✅ 成功采集 ${result.count} 个视频`)
+        alert(`✅ 成功采集 ${result.data?.count || videos.length} 个视频`)
       } else {
         alert(`❌ 采集失败: ${result.error}`)
       }

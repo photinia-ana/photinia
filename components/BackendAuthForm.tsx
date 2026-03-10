@@ -21,22 +21,30 @@ export function BackendAuthForm({ onSuccess }: BackendAuthFormProps) {
     setError(null)
     setLoading(true)
 
+    console.log('[BackendAuthForm] 开始提交:', { isLogin, email, username })
+
     try {
       const result = isLogin
         ? await loginWithBackend(email, password)
         : await registerWithBackend(email, password, username)
 
+      console.log('[BackendAuthForm] API 返回结果:', result)
+
       if (result.success && result.data) {
+        console.log('[BackendAuthForm] 认证成功，保存 token 和用户信息')
         // 保存 token 和用户信息
         await storage.set("auth_token", result.data.token)
         await storage.set("auth_user", result.data.user)
         await storage.set("auth_mode", "backend")
         
+        console.log('[BackendAuthForm] 数据已保存，调用 onSuccess')
         onSuccess()
       } else {
-        setError(result.error || "操作失败")
+        console.error('[BackendAuthForm] 认证失败:', result.error)
+        setError(result.error || result.message || "操作失败")
       }
     } catch (err) {
+      console.error('[BackendAuthForm] 捕获异常:', err)
       setError(err.message || "网络错误")
     } finally {
       setLoading(false)

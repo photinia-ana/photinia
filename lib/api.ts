@@ -48,30 +48,60 @@ export interface AuthResponse {
  * 用户注册（后端认证）
  */
 export async function registerWithBackend(email: string, password: string, username?: string): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password, username }),
-  });
+  try {
+    console.log('[API] 注册请求:', { url: `${API_BASE_URL}/auth/register`, email, username });
+    
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, username }),
+    });
 
-  return response.json();
+    console.log('[API] 注册响应状态:', response.status, response.statusText);
+    
+    const data = await response.json();
+    console.log('[API] 注册响应数据:', data);
+    
+    return data;
+  } catch (error) {
+    console.error('[API] 注册请求失败:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '网络请求失败',
+    };
+  }
 }
 
 /**
  * 用户登录（后端认证）
  */
 export async function loginWithBackend(email: string, password: string): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password }),
-  });
+  try {
+    console.log('[API] 登录请求:', { url: `${API_BASE_URL}/auth/login`, email });
+    
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-  return response.json();
+    console.log('[API] 登录响应状态:', response.status, response.statusText);
+    
+    const data = await response.json();
+    console.log('[API] 登录响应数据:', data);
+    
+    return data;
+  } catch (error) {
+    console.error('[API] 登录请求失败:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '网络请求失败',
+    };
+  }
 }
 
 /**

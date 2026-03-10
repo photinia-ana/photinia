@@ -61,6 +61,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === "CLEAR_RECENT_TABS") {
     recentClosedTabs = []
     sendResponse({ success: true })
+  } else if (message.type === "API_REQUEST") {
+    // 代理 API 请求（用于 Content Script）
+    handleApiRequest(message.payload)
+      .then(result => sendResponse(result))
+      .catch(error => sendResponse({ 
+        success: false, 
+        error: error.message 
+      }))
+    return true // 保持消息通道开启
   }
   return true
 })
+
+// 处理 API 请求
+async function handleApiRequest(payload: {
+  url: string
+  method: string
+  headers?: Record<string, string>
+  body?: any
+}) {
+  try {
+    const response = await fetch(payload.url, {
+      method: payload.method,
+      headers: payload.headers || {},
+      body: payload.body ? JSON.stringify(payload.body) : undefined
+    })
+    
+    const data = await response.json()
+    return data
+  } catch (error) {
+    throw new Error(`API 请求失败: ${error.message}`)
+  }
+}
